@@ -2,14 +2,15 @@ use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
 use axum::extract::State;
-use serde::Serialize;
+use axum::routing::post;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 struct AppState {
     polls: Arc<Mutex<Vec<Poll>>>
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Poll {
     candidates: Vec<String>
 }
@@ -22,11 +23,13 @@ async fn list_polls (
     Json(state.polls.lock().unwrap().to_vec())
 }
 
+#[axum::debug_handler]
 async fn create_poll (
     State(state): State<AppState>,
+    Json(new_poll): Json<Poll>,
 ) {
     let mut polls = state.polls.lock().unwrap();
-    polls.push(Poll {candidates: Vec::new()});
+    polls.push(new_poll);
 }
 
 #[tokio::main]
@@ -44,8 +47,8 @@ async fn main() {
 
     // create a `Router` that holds our state
     let app = Router::new()
-        .route("/", get(list_polls))
-        .route("/polls", get(create_poll))
+        .route("/polls", get(list_polls))
+        .route("/polls", post(create_poll))
         // provide the state so the router can access it
         .with_state(state);
 
