@@ -2,7 +2,6 @@ use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
 use axum::extract::State;
-use axum::http::Response;
 use serde::Serialize;
 
 #[derive(Clone)]
