@@ -1,7 +1,7 @@
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::routing::post;
 use serde::{Deserialize, Serialize};
 
@@ -11,8 +11,20 @@ struct AppState {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+struct ScoreRange(u8, u8);
+
+#[derive(Clone, Serialize, Deserialize)]
 struct Poll {
-    candidates: Vec<String>
+    candidates: Vec<String>,
+    score_range: ScoreRange,
+    votes: Vec<Vec<u8>>
+}
+
+impl Poll {
+    // FIXME: Figure out how to run this at validation time
+    fn is_valid(&self) -> bool {
+        self.votes.iter().all(|vote| self.candidates.len() == vote.len())
+    }
 }
 
 async fn list_polls (
@@ -32,15 +44,29 @@ async fn create_poll (
     polls.push(new_poll);
 }
 
+async fn add_vote (
+    State(state): State<AppState>,
+    Path(poll_id): Path<usize>,
+    Json(vote): Json<Vec<u8>>
+) {
+    // FIXME: Add check for correct vec length
+    let mut polls = state.polls.lock().unwrap();
+    let poll = polls.get_mut(poll_id).unwrap();
+    poll.votes.push(vote);
+
+}
+
 #[tokio::main]
 async fn main() {
     let state = AppState {
         polls: Arc::new(Mutex::new(
             vec![Poll {
+                score_range: ScoreRange(0, 5),
                 candidates: vec![
                     "O'Brien".to_string(),
                     "Murphy".to_string()
-                ]
+                ],
+                votes: vec![]
             }]
         ))
     };
@@ -49,6 +75,7 @@ async fn main() {
     let app = Router::new()
         .route("/polls", get(list_polls))
         .route("/polls", post(create_poll))
+        .route("/vote/:poll_id", post(add_vote))
         // provide the state so the router can access it
         .with_state(state);
 
