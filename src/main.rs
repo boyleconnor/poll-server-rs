@@ -7,6 +7,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::post;
 use models::{Poll, VotingError};
+use crate::models::PollMetadata;
 
 #[derive(Clone)]
 struct AppState {
@@ -17,17 +18,22 @@ async fn list_polls (
     // access the state via the `State` extractor
     // extracting a state of the wrong type results in a compile error
     State(state): State<AppState>,
-) -> Json<Vec<Poll>> {
-    Json(state.polls.lock().unwrap().to_vec())
+) -> Json<Vec<PollMetadata>> {
+    let polls = state.polls.lock().unwrap();
+    Json(polls.iter().map(|poll| poll.metadata.clone()).collect())
 }
 
 #[axum::debug_handler]
 async fn create_poll (
     State(state): State<AppState>,
-    Json(new_poll): Json<Poll>,
+    Json(poll_metadata): Json<PollMetadata>,
 ) {
     let mut polls = state.polls.lock().unwrap();
-    polls.push(new_poll);
+    polls.push(Poll::new(
+        poll_metadata.candidates,
+        poll_metadata.min_score,
+        poll_metadata.max_score
+    ));
 }
 
 async fn add_vote (
