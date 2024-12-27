@@ -1,30 +1,16 @@
+mod models;
+
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::routing::post;
-use serde::{Deserialize, Serialize};
+use models::{Poll, VotingError};
 
 #[derive(Clone)]
 struct AppState {
     polls: Arc<Mutex<Vec<Poll>>>
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct ScoreRange(u8, u8);
-
-#[derive(Clone, Serialize, Deserialize)]
-struct Poll {
-    candidates: Vec<String>,
-    score_range: ScoreRange,
-    votes: Vec<Vec<u8>>
-}
-
-impl Poll {
-    // FIXME: Figure out how to run this at validation time
-    fn is_valid(&self) -> bool {
-        self.votes.iter().all(|vote| self.candidates.len() == vote.len())
-    }
 }
 
 async fn list_polls (
@@ -48,26 +34,38 @@ async fn add_vote (
     State(state): State<AppState>,
     Path(poll_id): Path<usize>,
     Json(vote): Json<Vec<u8>>
-) {
+) -> Result<(), (StatusCode, String)>{
     // FIXME: Add check for correct vec length
     let mut polls = state.polls.lock().unwrap();
-    let poll = polls.get_mut(poll_id).unwrap();
-    poll.votes.push(vote);
-
+    let poll_option = polls.get_mut(poll_id);
+    if let Some(poll) = poll_option {
+        match poll.add_vote(vote.clone()) {
+            Ok(_) => { Ok(()) }
+            Err(VotingError::InvalidVoteLengthError) => {
+                Err((StatusCode::UNPROCESSABLE_ENTITY, format!("vote was incorrect length: {} (should be {})", vote.len(), poll.metadata.candidates.len())))
+            }
+            Err(VotingError::OutsideScoreRangeError) => {
+                Err((StatusCode::UNPROCESSABLE_ENTITY, format!("vote contained score outside accepted range: [{}, {}]", poll.metadata.min_score, poll.metadata.max_score)))
+            }
+        }
+    } else {
+        Err((StatusCode::NOT_FOUND, format!("poll not found: {}", poll_id)))
+    }
 }
 
 #[tokio::main]
 async fn main() {
     let state = AppState {
         polls: Arc::new(Mutex::new(
-            vec![Poll {
-                score_range: ScoreRange(0, 5),
-                candidates: vec![
+            vec![Poll::new(
+                vec![
                     "O'Brien".to_string(),
-                    "Murphy".to_string()
+                    "Murphy".to_string(),
+                    "Walsh".to_string()
                 ],
-                votes: vec![]
-            }]
+                0,
+                5
+            )]
         ))
     };
 
@@ -75,7 +73,7 @@ async fn main() {
     let app = Router::new()
         .route("/polls", get(list_polls))
         .route("/polls", post(create_poll))
-        .route("/vote/:poll_id", post(add_vote))
+        .route("/polls/:poll_id/votes", post(add_vote))
         // provide the state so the router can access it
         .with_state(state);
 
