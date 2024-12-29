@@ -14,6 +14,7 @@ struct AppState {
     polls: Arc<Mutex<Vec<Poll>>>
 }
 
+#[axum::debug_handler]
 async fn list_polls (
     // access the state via the `State` extractor
     // extracting a state of the wrong type results in a compile error
@@ -62,6 +63,7 @@ async fn delete_poll (
     Ok(())
 }
 
+#[axum::debug_handler]
 async fn add_vote (
     State(state): State<AppState>,
     Path(poll_id): Path<usize>,
