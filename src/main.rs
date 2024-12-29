@@ -56,7 +56,7 @@ async fn delete_poll (
     Path(poll_id): Path<usize>,
 ) -> Result<(), (StatusCode, String)> {
     let mut polls = state.polls.lock().unwrap();
-    if poll_id < 0 || poll_id >= polls.len() {
+    if poll_id >= polls.len() {
         return Err((StatusCode::NOT_FOUND, format!("poll with id {} not found", poll_id)));
     }
     polls.remove(poll_id);
