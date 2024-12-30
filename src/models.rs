@@ -9,15 +9,17 @@ pub struct Poll {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PollMetadata {
+    pub id: usize,
     pub candidates: Vec<String>,
     pub min_score: u8,
     pub max_score: u8
 }
 
 impl Poll {
-    pub fn new(candidates: Vec<String>, min_score: u8, max_score: u8) -> Self {
+    pub fn new(id: usize, candidates: Vec<String>, min_score: u8, max_score: u8) -> Self {
         Self {
             metadata: PollMetadata {
+                id,
                 candidates,
                 min_score,
                 max_score

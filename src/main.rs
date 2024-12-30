@@ -1,5 +1,6 @@
 mod models;
 
+use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
@@ -11,7 +12,13 @@ use crate::models::PollMetadata;
 
 #[derive(Clone)]
 struct AppState {
-    polls: Arc<Mutex<Vec<Poll>>>
+    polls: Arc<Mutex<HashMap<usize, Poll>>>,
+    poll_counter: Arc<Mutex<usize>>
+}
+
+fn get_new_id(counter: &mut usize) -> usize {
+    *counter = *counter + 1;
+    counter.clone()
 }
 
 #[axum::debug_handler]
@@ -21,7 +28,7 @@ async fn list_polls (
     State(state): State<AppState>,
 ) -> Json<Vec<PollMetadata>> {
     let polls = state.polls.lock().unwrap();
-    Json(polls.iter().map(|poll| poll.metadata.clone()).collect())
+    Json(polls.values().map(|poll| poll.metadata.clone()).collect())
 }
 
 #[axum::debug_handler]
@@ -29,8 +36,10 @@ async fn create_poll (
     State(state): State<AppState>,
     Json(poll_metadata): Json<PollMetadata>,
 ) {
+    let poll_id = get_new_id(&mut state.poll_counter.lock().unwrap());
     let mut polls = state.polls.lock().unwrap();
-    polls.push(Poll::new(
+    polls.insert(poll_id, Poll::new(
+        poll_id,
         poll_metadata.candidates,
         poll_metadata.min_score,
         poll_metadata.max_score
@@ -43,7 +52,7 @@ async fn get_poll (
     Path(poll_id): Path<usize>,
 ) -> Result<Json<PollMetadata>, (StatusCode, String)> {
     let polls = state.polls.lock().unwrap();
-    let poll_option = polls.get(poll_id);
+    let poll_option = polls.get(&poll_id);
     match poll_option {
         Some(poll) => { Ok(Json(poll.metadata.clone())) }
         None => { Err((StatusCode::NOT_FOUND, format!("poll with id {} not found", poll_id))) }
@@ -56,11 +65,11 @@ async fn delete_poll (
     Path(poll_id): Path<usize>,
 ) -> Result<(), (StatusCode, String)> {
     let mut polls = state.polls.lock().unwrap();
-    if poll_id >= polls.len() {
-        return Err((StatusCode::NOT_FOUND, format!("poll with id {} not found", poll_id)));
-    }
-    polls.remove(poll_id);
-    Ok(())
+    polls.remove(&poll_id)
+        .map(|_| ())
+        .ok_or(
+            (StatusCode::NOT_FOUND, format!("poll with id {} not found", poll_id))
+        )
 }
 
 #[axum::debug_handler]
@@ -71,7 +80,7 @@ async fn add_vote (
 ) -> Result<(), (StatusCode, String)>{
     // FIXME: Add check for correct vec length
     let mut polls = state.polls.lock().unwrap();
-    let poll_option = polls.get_mut(poll_id);
+    let poll_option = polls.get_mut(&poll_id);
     if let Some(poll) = poll_option {
         match poll.add_vote(vote.clone()) {
             Ok(_) => { Ok(()) }
@@ -90,18 +99,23 @@ async fn add_vote (
 #[tokio::main]
 async fn main() {
     let state = AppState {
+        poll_counter: Arc::new(Mutex::new(0)),
         polls: Arc::new(Mutex::new(
-            vec![Poll::new(
-                vec![
-                    "O'Brien".to_string(),
-                    "Murphy".to_string(),
-                    "Walsh".to_string()
-                ],
-                0,
-                5
-            )]
+            HashMap::<usize, Poll>::new()
         ))
     };
+
+    let poll_id = get_new_id(&mut state.poll_counter.lock().unwrap());
+    state.polls.lock().unwrap().insert(poll_id, Poll::new(
+        poll_id,
+        vec![
+            "O'Brien".to_string(),
+            "Murphy".to_string(),
+            "Walsh".to_string()
+        ],
+        0,
+        5
+    ));
 
     // create a `Router` that holds our state
     let app = Router::new()
