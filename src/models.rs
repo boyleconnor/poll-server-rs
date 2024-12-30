@@ -27,6 +27,10 @@ impl Poll {
             votes: Vec::new(),
         }
     }
+
+    pub fn list_votes(&self) -> Vec<Vec<u8>> {
+        self.votes.clone()
+    }
 }
 
 pub enum VotingError {

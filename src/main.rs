@@ -96,6 +96,21 @@ async fn add_vote (
     }
 }
 
+#[axum::debug_handler]
+async fn list_votes (
+    State(state): State<AppState>,
+    Path(poll_id): Path<usize>
+) -> Result<Json<Vec<Vec<u8>>>, (StatusCode, String)>{
+    // FIXME: Add check for correct vec length
+    let mut polls = state.polls.lock().unwrap();
+    let poll_option = polls.get_mut(&poll_id);
+    if let Some(poll) = poll_option {
+        Ok(Json(poll.list_votes()))
+    } else {
+        Err((StatusCode::NOT_FOUND, format!("poll not found: {}", poll_id)))
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let state = AppState {
@@ -124,6 +139,7 @@ async fn main() {
         .route("/polls/:poll_id", get(get_poll))
         .route("/polls/:poll_id", delete(delete_poll))
         .route("/polls/:poll_id/votes", post(add_vote))
+        .route("/polls/:poll_id/votes", get(list_votes))
         // provide the state so the router can access it
         .with_state(state);
 
