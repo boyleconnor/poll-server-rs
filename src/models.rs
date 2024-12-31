@@ -2,9 +2,12 @@ use serde::{Deserialize, Serialize};
 use crate::models::VotingError::{InvalidVoteLengthError, OutsideScoreRangeError};
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct Vote(Vec<u8>);
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Poll {
     pub metadata: PollMetadata,
-    votes: Vec<Vec<u8>>
+    votes: Vec<Vote>
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -28,7 +31,7 @@ impl Poll {
         }
     }
 
-    pub fn list_votes(&self) -> Vec<Vec<u8>> {
+    pub fn list_votes(&self) -> Vec<Vote> {
         self.votes.clone()
     }
 }
@@ -40,10 +43,10 @@ pub enum VotingError {
 
 impl Poll {
 
-    pub fn add_vote(&mut self, vote: Vec<u8>) -> Result<(), VotingError> {
-        if vote.len() != self.metadata.candidates.len() {
+    pub fn add_vote(&mut self, vote: Vote) -> Result<(), VotingError> {
+        if vote.0.len() != self.metadata.candidates.len() {
             Err(InvalidVoteLengthError)
-        } else if vote.iter().any(|score| (score < &self.metadata.min_score) | (score > &self.metadata.max_score)) {
+        } else if vote.0.iter().any(|score| (score < &self.metadata.min_score) | (score > &self.metadata.max_score)) {
             Err(OutsideScoreRangeError)
         } else {
             self.votes.push(vote);

@@ -8,7 +8,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, post};
 use models::{Poll, VotingError};
-use crate::models::PollMetadata;
+use crate::models::{PollMetadata, Vote};
 
 #[derive(Clone)]
 struct AppState {
@@ -76,7 +76,7 @@ async fn delete_poll (
 async fn add_vote (
     State(state): State<AppState>,
     Path(poll_id): Path<usize>,
-    Json(vote): Json<Vec<u8>>
+    Json(vote): Json<Vote>
 ) -> Result<(), (StatusCode, String)>{
     // FIXME: Add check for correct vec length
     let mut polls = state.polls.lock().unwrap();
@@ -85,7 +85,7 @@ async fn add_vote (
         match poll.add_vote(vote.clone()) {
             Ok(_) => { Ok(()) }
             Err(VotingError::InvalidVoteLengthError) => {
-                Err((StatusCode::UNPROCESSABLE_ENTITY, format!("vote was incorrect length: {} (should be {})", vote.len(), poll.metadata.candidates.len())))
+                Err((StatusCode::UNPROCESSABLE_ENTITY, format!("vote was incorrect length (should be {})", poll.metadata.candidates.len())))
             }
             Err(VotingError::OutsideScoreRangeError) => {
                 Err((StatusCode::UNPROCESSABLE_ENTITY, format!("vote contained score outside accepted range: [{}, {}]", poll.metadata.min_score, poll.metadata.max_score)))
@@ -100,7 +100,7 @@ async fn add_vote (
 async fn list_votes (
     State(state): State<AppState>,
     Path(poll_id): Path<usize>
-) -> Result<Json<Vec<Vec<u8>>>, (StatusCode, String)>{
+) -> Result<Json<Vec<Vote>>, (StatusCode, String)>{
     // FIXME: Add check for correct vec length
     let mut polls = state.polls.lock().unwrap();
     let poll_option = polls.get_mut(&poll_id);
