@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use crate::models::VotingError::{InvalidVoteLengthError, OutsideScoreRangeError};
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct Vote(Vec<u8>);
+pub struct Vote(Arc<[u8]>);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Poll {
@@ -13,13 +14,13 @@ pub struct Poll {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PollMetadata {
     pub id: usize,
-    pub candidates: Vec<String>,
+    pub candidates: Arc<[Arc<str>]>,
     pub min_score: u8,
     pub max_score: u8
 }
 
 impl Poll {
-    pub fn new(id: usize, candidates: Vec<String>, min_score: u8, max_score: u8) -> Self {
+    pub fn new(id: usize, candidates: Arc<[Arc<str>]>, min_score: u8, max_score: u8) -> Self {
         Self {
             metadata: PollMetadata {
                 id,

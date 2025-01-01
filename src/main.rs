@@ -1,7 +1,6 @@
 mod models;
 
 use std::collections::HashMap;
-use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
 use axum::extract::{Path, State};
@@ -123,11 +122,11 @@ async fn main() {
     let poll_id = get_new_id(&mut state.poll_counter.lock().unwrap());
     state.polls.lock().unwrap().insert(poll_id, Poll::new(
         poll_id,
-        vec![
-            "O'Brien".to_string(),
-            "Murphy".to_string(),
-            "Walsh".to_string()
-        ],
+        Arc::new([
+            Arc::from("O'Brien"),
+            Arc::from("Murphy"),
+            Arc::from("Walsh")
+        ]),
         0,
         5
     ));
