@@ -19,6 +19,13 @@ pub struct PollMetadata {
     pub max_score: u8
 }
 
+#[derive(Clone, Deserialize)]
+pub struct PollCreationRequest {
+    pub candidates: Arc<[Arc<str>]>,
+    pub min_score: u8,
+    pub max_score: u8
+}
+
 impl Poll {
     pub fn new(id: usize, candidates: Arc<[Arc<str>]>, min_score: u8, max_score: u8) -> Self {
         Self {

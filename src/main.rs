@@ -7,7 +7,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, post};
 use models::{Poll, VotingError};
-use crate::models::{PollMetadata, Vote};
+use crate::models::{PollCreationRequest, PollMetadata, Vote};
 
 #[derive(Clone)]
 struct AppState {
@@ -33,15 +33,15 @@ async fn list_polls (
 #[axum::debug_handler]
 async fn create_poll (
     State(state): State<AppState>,
-    Json(poll_metadata): Json<PollMetadata>,
+    Json(poll_creation_request): Json<PollCreationRequest>,
 ) {
     let poll_id = get_new_id(&mut state.poll_counter.lock().unwrap());
     let mut polls = state.polls.lock().unwrap();
     polls.insert(poll_id, Poll::new(
         poll_id,
-        poll_metadata.candidates,
-        poll_metadata.min_score,
-        poll_metadata.max_score
+        poll_creation_request.candidates,
+        poll_creation_request.min_score,
+        poll_creation_request.max_score
     ));
 }
 
