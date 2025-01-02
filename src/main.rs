@@ -1,23 +1,61 @@
 mod models;
 
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 use std::sync::{Arc, Mutex};
 use axum::{routing::get, Json, Router};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, post};
+use serde::{Deserialize, Serialize};
 use models::{Poll, VotingError};
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
 
-#[derive(Clone)]
+static STATE_FILENAME: &str = "polls.json";
+
+#[derive(Serialize, Deserialize, Clone)]
 struct AppState {
     polls: Arc<Mutex<HashMap<usize, Poll>>>,
     poll_counter: Arc<Mutex<usize>>
 }
 
+fn load_state_from_file() -> Result<AppState, std::io::Error> {
+    let state_file = File::open(STATE_FILENAME)?;
+    let reader = BufReader::new(state_file);
+    let state = serde_json::from_reader(reader)?;
+    Ok(state)
+}
+
+fn initialize_state() -> AppState {
+    load_state_from_file().unwrap_or_else(|err| {
+        println!("failed to load state from file: {err}");
+        AppState {
+            poll_counter: Arc::new(Mutex::new(0)),
+            polls: Arc::new(Mutex::new(
+                HashMap::<usize, Poll>::new()
+            ))
+        }
+    })
+}
+
 fn get_new_id(counter: &mut usize) -> usize {
     *counter = *counter + 1;
     counter.clone()
+}
+
+#[axum::debug_handler]
+async fn save_state(
+    State(state): State<AppState>,
+) -> Result<(), (StatusCode, String)> {
+    let state_file: File = File::create(STATE_FILENAME).map_err(|_| {
+        println!("state File already exists");
+        (StatusCode::INTERNAL_SERVER_ERROR, "could not open state file for writing".to_string())
+    })?;
+    let writer = BufWriter::new(state_file);
+    serde_json::to_writer(writer, &state).map_err(
+        |_| { (StatusCode::INTERNAL_SERVER_ERROR, "could not write to file".to_string()) }
+    )
 }
 
 #[axum::debug_handler]
@@ -112,24 +150,7 @@ async fn list_votes (
 
 #[tokio::main]
 async fn main() {
-    let state = AppState {
-        poll_counter: Arc::new(Mutex::new(0)),
-        polls: Arc::new(Mutex::new(
-            HashMap::<usize, Poll>::new()
-        ))
-    };
-
-    let poll_id = get_new_id(&mut state.poll_counter.lock().unwrap());
-    state.polls.lock().unwrap().insert(poll_id, Poll::new(
-        poll_id,
-        Arc::new([
-            Arc::from("O'Brien"),
-            Arc::from("Murphy"),
-            Arc::from("Walsh")
-        ]),
-        0,
-        5
-    ));
+    let state = initialize_state();
 
     // create a `Router` that holds our state
     let app = Router::new()
@@ -139,6 +160,7 @@ async fn main() {
         .route("/polls/:poll_id", delete(delete_poll))
         .route("/polls/:poll_id/votes", post(add_vote))
         .route("/polls/:poll_id/votes", get(list_votes))
+        .route("/save_state", post(save_state))
         // provide the state so the router can access it
         .with_state(state);
 
