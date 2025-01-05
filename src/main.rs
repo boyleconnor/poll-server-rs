@@ -9,6 +9,7 @@ use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
 
+#[axum::debug_handler]
 async fn save_state(
     State(app_state): State<AppState>,
 ) -> Result<(), (StatusCode, String)> {
