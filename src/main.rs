@@ -117,10 +117,10 @@ async fn main() {
     let app = Router::new()
         .route("/polls", post(create_poll))
         .route("/polls", get(list_polls))
-        .route("/polls/:poll_id", get(get_poll))
-        .route("/polls/:poll_id", delete(delete_poll))
-        .route("/polls/:poll_id/votes", post(add_vote))
-        .route("/polls/:poll_id/votes", get(list_votes))
+        .route("/polls/{poll_id}", get(get_poll))
+        .route("/polls/{poll_id}", delete(delete_poll))
+        .route("/polls/{poll_id}/votes", post(add_vote))
+        .route("/polls/{poll_id}/votes", get(list_votes))
         .route("/save_state", post(save_state))
         // provide the state so the router can access it
         .with_state(app_state);
