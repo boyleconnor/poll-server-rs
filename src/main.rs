@@ -1,6 +1,8 @@
 mod models;
 mod state;
+mod auth;
 
+use std::string::ToString;
 use axum::{routing::get, Json, Router};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -8,6 +10,9 @@ use axum::routing::{delete, post};
 use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
+use auth::LoginRequest;
+
+const SESSION_COOKIE: &str = "session_id";
 
 #[axum::debug_handler]
 async fn save_state(
@@ -109,6 +114,25 @@ async fn list_votes (
     }
 }
 
+#[axum::debug_handler]
+async fn login(
+    State(app_state): State<AppState>,
+    Json(login_request): Json<LoginRequest>,
+) -> Result<String, StatusCode> {
+    let username = &login_request.username;
+    if let Some(user) = app_state.users.lock().unwrap().get(username) {
+        // check if the password matches the user
+        if user.authenticate(login_request.password) {
+            Ok(format!("login succeeded for user: {username}"))
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
+
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let app_state = state::initialize_state();
@@ -122,6 +146,7 @@ async fn main() {
         .route("/polls/{poll_id}/votes", post(add_vote))
         .route("/polls/{poll_id}/votes", get(list_votes))
         .route("/save_state", post(save_state))
+        .route("/login", post(login))
         // provide the state so the router can access it
         .with_state(app_state);
 

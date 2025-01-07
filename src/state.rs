@@ -4,12 +4,14 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use crate::models::Poll;
+use crate::auth::{User, UserRole};
 
 pub static STATE_FILENAME: &str = "polls.json";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppState {
     pub polls: Arc<Mutex<HashMap<usize, Poll>>>,
+    pub users: Arc<Mutex<HashMap<String, User>>>,
     poll_counter: Arc<Mutex<usize>>
 }
 
@@ -31,7 +33,14 @@ fn load_state_from_file() -> Result<AppState, std::io::Error> {
 pub fn initialize_state() -> AppState {
     load_state_from_file().unwrap_or_else(|err| {
         println!("failed to load state from file: {err}");
+        const ADMIN_USERNAME: &str = "admin";
+        const ADMIN_PASSWORD: &str = "password"; // FIXME: change this
         AppState {
+            users: Arc::new(Mutex::new(HashMap::from([
+                (ADMIN_USERNAME.to_string(), User::new(
+                    ADMIN_USERNAME.to_string(), UserRole::Admin, ADMIN_PASSWORD.to_string()
+                ))
+            ]))),
             poll_counter: Arc::new(Mutex::new(0)),
             polls: Arc::new(Mutex::new(
                 HashMap::<usize, Poll>::new()
