@@ -4,6 +4,8 @@ use sha2::{Digest, Sha512};
 
 const SALT_LENGTH: usize = 16;  // in bytes
 
+pub(crate) type Username = String;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) enum UserRole {
     Admin,
@@ -11,29 +13,27 @@ pub(crate) enum UserRole {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub(crate) struct User {
+pub(crate) struct UserAuth {
     role: UserRole,
-    username: String,
     password_salt: Vec<u8>,
     password_hash: Vec<u8>
 }
 
 #[derive(Deserialize)]
 pub(crate) struct LoginRequest {
-    pub username: String,
+    pub username: Username,
     pub password: String
 }
 
-impl User {
-    pub(crate) fn new(username: String, role: UserRole, password: String) -> User {
+impl UserAuth {
+    pub(crate) fn new(role: UserRole, password: String) -> UserAuth {
         let mut password_salt = vec![0u8; SALT_LENGTH];
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut password_salt);
 
         let password_hash = Self::get_salted_hash(password, &password_salt);
 
-        User {
-            username,
+        UserAuth {
             role,
             password_salt,
             password_hash
