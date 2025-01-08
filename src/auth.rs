@@ -45,11 +45,9 @@ impl User {
     }
 
     fn get_salted_hash(password: String, password_salt: &Vec<u8>) -> Vec<u8> {
-        println!("input password: '{password}' input salt: {password_salt:?}");
         let mut salted_password = password_salt.clone();
         salted_password.extend(password.as_bytes().iter());
         let password_hash = Sha512::digest(salted_password).to_vec();
-        println!("calculated hash: {password_hash:?}");
         password_hash
     }
 }
