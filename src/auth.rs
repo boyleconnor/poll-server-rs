@@ -1,6 +1,7 @@
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
+use chrono::prelude::{DateTime, Utc};
 
 const SALT_LENGTH: usize = 16;  // in bytes
 
@@ -12,11 +13,20 @@ pub(crate) enum UserRole {
     General
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub(crate) struct UserAuth {
+pub(crate) type SessionId = String;
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct UserSession {
+    #[serde()]
+    pub expiration: DateTime<Utc>,
+    pub username: Username
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct User {
     role: UserRole,
     password_salt: Vec<u8>,
-    password_hash: Vec<u8>
+    password_hash: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -25,15 +35,15 @@ pub(crate) struct LoginRequest {
     pub password: String
 }
 
-impl UserAuth {
-    pub(crate) fn new(role: UserRole, password: String) -> UserAuth {
+impl User {
+    pub(crate) fn new(role: UserRole, password: String) -> User {
         let mut password_salt = vec![0u8; SALT_LENGTH];
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut password_salt);
 
         let password_hash = Self::get_salted_hash(password, &password_salt);
 
-        UserAuth {
+        User {
             role,
             password_salt,
             password_hash

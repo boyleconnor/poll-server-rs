@@ -3,16 +3,30 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
+use std::ops::Add;
+use axum::extract::FromRef;
+use axum_extra::extract::cookie::Key;
+use chrono::{TimeDelta, Utc};
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use crate::models::Poll;
-use crate::auth::{UserAuth, UserRole, Username};
+use crate::auth::{SessionId, User, UserRole, UserSession, Username};
 
 pub static STATE_FILENAME: &str = "polls.json";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppState {
     pub polls: Arc<Mutex<HashMap<usize, Poll>>>,
-    pub users: Arc<Mutex<HashMap<Username, UserAuth>>>,
+    pub users: Arc<Mutex<HashMap<Username, User>>>,
+    pub user_sessions: Arc<Mutex<HashMap<SessionId, UserSession>>>,
     poll_counter: Arc<Mutex<usize>>
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(input: &AppState) -> Self {
+        // FIXME: set a real key!
+        Key::from(&[0; 64])
+    }
 }
 
 impl AppState {
@@ -20,6 +34,24 @@ impl AppState {
         let mut counter = self.poll_counter.lock().unwrap();
         *counter = *counter + 1;
         counter.clone()
+    }
+
+    pub fn new_user_session(&mut self, username: Username) -> SessionId {
+        const SESSION_LENGTH: TimeDelta = chrono::Duration::days(7);
+        const SESSION_ID_LENGTH: usize = 7;
+
+        let expiration = Utc::now().add(SESSION_LENGTH);
+        let user_session = UserSession {
+            expiration,
+            username: username.clone()
+        };
+        let session_id: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(SESSION_ID_LENGTH)
+            .map(char::from)
+            .collect();
+        self.user_sessions.lock().unwrap().insert(session_id.clone(), user_session);
+        session_id
     }
 }
 
@@ -37,10 +69,11 @@ pub fn initialize_state() -> AppState {
         const ADMIN_PASSWORD: &str = "password"; // FIXME: change this
         AppState {
             users: Arc::new(Mutex::new(HashMap::from([
-                (ADMIN_USERNAME.to_string(), UserAuth::new(
+                (ADMIN_USERNAME.to_string(), User::new(
                     UserRole::Admin, ADMIN_PASSWORD.to_string()
                 ))
             ]))),
+            user_sessions: Arc::new(Mutex::new(HashMap::new())),
             poll_counter: Arc::new(Mutex::new(0)),
             polls: Arc::new(Mutex::new(
                 HashMap::<usize, Poll>::new()

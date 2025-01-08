@@ -7,10 +7,14 @@ use axum::{routing::get, Json, Router};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, post};
+use axum_extra::extract::{SignedCookieJar};
+use axum_extra::extract::cookie::Cookie;
+use chrono::Utc;
 use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
 use auth::LoginRequest;
+use crate::auth::UserSession;
 
 const SESSION_COOKIE: &str = "session_id";
 
@@ -116,18 +120,20 @@ async fn list_votes (
 
 #[axum::debug_handler]
 async fn login(
-    State(app_state): State<AppState>,
-    Json(login_request): Json<LoginRequest>,
-) -> Result<String, StatusCode> {
+    State(mut app_state): State<AppState>,
+    jar: SignedCookieJar,
+    Json(login_request): Json<LoginRequest>
+) -> Result<(SignedCookieJar, String), StatusCode> {
     let username = &login_request.username;
-    if let Some(user) = app_state.users.lock().unwrap().get(username) {
-        // check if the password matches the user
+    let mut authenticated = false;
+    if let Some(user) = app_state.users.lock().unwrap().get_mut(username) {
         if user.authenticate(login_request.password) {
-            Ok(format!("login succeeded for user: {username}"))
-        } else {
-            Err(StatusCode::UNAUTHORIZED)
+            authenticated = true;
         }
-
+    }
+    if authenticated {
+        let session_id = app_state.new_user_session(username.clone());
+        Ok((jar.add(Cookie::new(SESSION_COOKIE, session_id.clone())), format!("login succeeded for user: {username}")))
     } else {
         Err(StatusCode::UNAUTHORIZED)
     }
