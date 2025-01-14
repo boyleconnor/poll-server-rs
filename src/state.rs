@@ -19,13 +19,13 @@ pub struct AppState {
     pub(crate) polls: Arc<Mutex<HashMap<usize, Poll>>>,
     pub(crate) users: Arc<Mutex<HashMap<Username, User>>>,
     pub(crate) user_sessions: Arc<Mutex<HashMap<SessionId, UserSession>>>,
+    key: Arc<Vec<u8>>,
     poll_counter: Arc<Mutex<usize>>
 }
 
 impl FromRef<AppState> for Key {
-    fn from_ref(_input: &AppState) -> Self {
-        // FIXME: set a real key!
-        Key::from(&[0; 64])
+    fn from_ref(state: &AppState) -> Self {
+        Key::from(&state.key)
     }
 }
 
@@ -61,7 +61,8 @@ impl AppState {
                 poll_counter: Arc::new(Mutex::new(0)),
                 polls: Arc::new(Mutex::new(
                     HashMap::<usize, Poll>::new()
-                ))
+                )),
+                key: Arc::new(Key::generate().master().to_vec())
             }
         })
     }
