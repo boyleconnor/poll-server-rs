@@ -9,12 +9,10 @@ use axum::http::StatusCode;
 use axum::routing::{delete, post};
 use axum_extra::extract::{SignedCookieJar};
 use axum_extra::extract::cookie::Cookie;
-use chrono::Utc;
 use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
 use auth::LoginRequest;
-use crate::auth::UserSession;
 
 const SESSION_COOKIE: &str = "session_id";
 
@@ -141,7 +139,7 @@ async fn login(
 
 #[tokio::main]
 async fn main() {
-    let app_state = state::initialize_state();
+    let app_state = AppState::initialize();
 
     // create a `Router` that holds our state
     let app = Router::new()
