@@ -8,7 +8,7 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use chrono::{TimeDelta, Utc};
 use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::{thread_rng, Rng};
 use crate::models::Poll;
 use crate::auth::{SessionId, User, UserRole, UserSession, Username};
 
@@ -66,11 +66,18 @@ pub fn initialize_state() -> AppState {
     load_state_from_file().unwrap_or_else(|err| {
         println!("failed to load state from file: {err}");
         const ADMIN_USERNAME: &str = "admin";
-        const ADMIN_PASSWORD: &str = "password"; // FIXME: change this
+        const ADMIN_PASSWORD_LENGTH: usize = 16;
+        let admin_password: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(ADMIN_PASSWORD_LENGTH)
+            .map(char::from)
+            .collect();
+        println!("admin password: {admin_password} (write this down; it will not be shown again)");
+
         AppState {
             users: Arc::new(Mutex::new(HashMap::from([
                 (ADMIN_USERNAME.to_string(), User::new(
-                    UserRole::Admin, ADMIN_PASSWORD.to_string()
+                    UserRole::Admin, admin_password.to_string()
                 ))
             ]))),
             user_sessions: Arc::new(Mutex::new(HashMap::new())),
