@@ -10,7 +10,6 @@ use axum::http::StatusCode;
 use axum::routing::{delete, post};
 use axum_extra::extract::{SignedCookieJar};
 use axum_extra::extract::cookie::Cookie;
-use chrono::Utc;
 use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};

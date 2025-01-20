@@ -1,4 +1,4 @@
-use axum::extract::{FromRequest, FromRequestParts, Request};
+use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum_extra::extract::SignedCookieJar;
 use chrono::Utc;
