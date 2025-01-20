@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::ops::Add;
-use axum::extract::FromRef;
-use axum_extra::extract::cookie::Key;
+pub use axum::extract::FromRef;
+pub use axum_extra::extract::cookie::Key;
 use chrono::{TimeDelta, Utc};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -19,7 +19,7 @@ pub struct AppState {
     pub(crate) polls: Arc<Mutex<HashMap<usize, Poll>>>,
     pub(crate) users: Arc<Mutex<HashMap<Username, UserAuth>>>,
     pub(crate) user_sessions: Arc<Mutex<HashMap<SessionId, UserSession>>>,
-    key: Arc<Vec<u8>>,
+    pub(crate) key: Arc<Vec<u8>>,
     poll_counter: Arc<Mutex<usize>>
 }
 

@@ -24,7 +24,7 @@ pub(crate) struct UserSession {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct UserAuth {
-    role: UserRole,
+    pub role: UserRole,
     password_salt: Vec<u8>,
     password_hash: Vec<u8>,
 }
