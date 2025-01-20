@@ -15,7 +15,6 @@ pub(crate) struct AuthenticatedUser {
 
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
-    AuthenticatedUser: FromRequest<S>,
     AppState: FromRef<S>,
     S: Send + Sync,
     Key: FromRef<S>
