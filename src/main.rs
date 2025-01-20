@@ -1,6 +1,7 @@
 mod models;
 mod state;
 mod auth;
+mod extractors;
 
 use std::string::ToString;
 use axum::{routing::get, Json, Router};
@@ -14,6 +15,7 @@ use models::{Poll, VotingError};
 use state::AppState;
 use crate::models::{PollCreationRequest, PollMetadata, Vote};
 use auth::LoginRequest;
+use crate::extractors::AuthenticatedUser;
 
 const SESSION_COOKIE: &str = "session_id";
 
@@ -82,23 +84,9 @@ async fn delete_poll (
 async fn add_vote (
     State(app_state): State<AppState>,
     Path(poll_id): Path<usize>,
-    jar: SignedCookieJar,
+    user: AuthenticatedUser,
     Json(vote): Json<Vote>
 ) -> Result<(), (StatusCode, String)>{
-    let username = if let Some(cookie) = jar.get(SESSION_COOKIE) {
-        let users_sessions = app_state.user_sessions.lock().unwrap();
-        if let Some(user_session) = users_sessions.get(cookie.value()) {
-            if user_session.expiration > Utc::now() {
-                &user_session.username.clone()
-            } else {
-                return Err((StatusCode::UNAUTHORIZED, "session expired".to_string()))
-            }
-        } else {
-            return Err((StatusCode::UNAUTHORIZED, "not a valid session cookie".to_string()))
-        }
-    } else {
-        return Err((StatusCode::UNAUTHORIZED, "you are not signed in".to_string()));
-    };
     // FIXME: Add check for correct vec length
     let mut polls = app_state.polls.lock().unwrap();
     let poll_option = polls.get_mut(&poll_id);
