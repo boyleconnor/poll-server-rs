@@ -12,7 +12,7 @@ use rand::{thread_rng, Rng};
 use crate::models::Poll;
 use crate::auth::{SessionId, UserAuth, UserRole, UserSession, Username};
 
-pub static STATE_FILENAME: &str = "polls.json";
+static STATE_FILENAME: &str = "polls.json";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppState {
