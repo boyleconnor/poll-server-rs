@@ -10,14 +10,14 @@ use chrono::{TimeDelta, Utc};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use crate::models::Poll;
-use crate::auth::{SessionId, User, UserRole, UserSession, Username};
+use crate::auth::{SessionId, UserAuth, UserRole, UserSession, Username};
 
 pub static STATE_FILENAME: &str = "polls.json";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppState {
     pub(crate) polls: Arc<Mutex<HashMap<usize, Poll>>>,
-    pub(crate) users: Arc<Mutex<HashMap<Username, User>>>,
+    pub(crate) users: Arc<Mutex<HashMap<Username, UserAuth>>>,
     pub(crate) user_sessions: Arc<Mutex<HashMap<SessionId, UserSession>>>,
     key: Arc<Vec<u8>>,
     poll_counter: Arc<Mutex<usize>>
@@ -53,7 +53,7 @@ impl AppState {
 
             AppState {
                 users: Arc::new(Mutex::new(HashMap::from([
-                    (ADMIN_USERNAME.to_string(), User::new(
+                    (ADMIN_USERNAME.to_string(), UserAuth::new(
                         UserRole::Admin, admin_password.to_string()
                     ))
                 ]))),

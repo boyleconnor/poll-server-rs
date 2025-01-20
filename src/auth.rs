@@ -23,7 +23,7 @@ pub(crate) struct UserSession {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct User {
+pub(crate) struct UserAuth {
     role: UserRole,
     password_salt: Vec<u8>,
     password_hash: Vec<u8>,
@@ -35,15 +35,15 @@ pub(crate) struct LoginRequest {
     pub password: String
 }
 
-impl User {
-    pub(crate) fn new(role: UserRole, password: String) -> User {
+impl UserAuth {
+    pub(crate) fn new(role: UserRole, password: String) -> UserAuth {
         let mut password_salt = vec![0u8; SALT_LENGTH];
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut password_salt);
 
         let password_hash = Self::get_salted_hash(password, &password_salt);
 
-        User {
+        UserAuth {
             role,
             password_salt,
             password_hash
